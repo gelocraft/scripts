@@ -1,0 +1,36 @@
+---
+editorconfig:
+  - changed-files:
+      - any-glob-to-any-file: '.editorconfig'
+
+feature:
+  - head-branch: ['^feat', '^feature']
+
+bugfix:
+  - head-branch: ['^fix', 'fix']
+
+refactor:
+  - head-branch: ['^refactor', 'refactor']
+
+rename:
+  - head-branch: ['^rename', 'rename']
+
+script:
+  - changed-files:
+      - any-glob-to-any-file: ['bin/*']
+
+ci:
+  - head-branch: ['^ci', 'ci']
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/scripts/**
+          - .github/actions/**
+          - .github/workflows/**
+
+documentation:
+  - head-branch: ['^docs', '^documentation']
+  - changed-files:
+      - any-glob-to-any-file: ['docs/**', '**/*.md']
+
+revert:
+  - head-branch: ['^revert', 'revert', '^rollback', 'rollback']
