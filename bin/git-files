@@ -1,0 +1,16 @@
+#!/bin/sh
+
+BAT_THEME="${BAT_THEME:-Nord}"
+BAT_STYLE="${BAT_STYLE:-changes,numbers}"
+FZF_GIT_FILES_DEFAULT_OPTS="${FZF_GIT_FILES_DEFAULT_OPTS:---border=rounded --border-label=' git-files '}"
+FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-} ${FZF_GIT_FILES_DEFAULT_OPTS-} --bind='focus:transform-preview-label:basename {}'"
+
+git_dir="$(git rev-parse --show-toplevel 2>/dev/null)"
+
+# shellcheck disable=SC2181
+[ $? -ne 0 ] && exit 1
+
+git_files="$(git ls-files "$git_dir" --modified --others)"
+
+selected_file="$(echo "$git_files" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" BAT_STYLE="${BAT_STYLE-}" BAT_THEME="${BAT_THEME-}" fzf --preview="batcat --color=always {} 2>/dev/null || bat --color=always {} 2>/dev/null || cat {}")"
+[ -n "$selected_file" ] && "$EDITOR" "$selected_file"
