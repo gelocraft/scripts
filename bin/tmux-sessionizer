@@ -14,8 +14,6 @@ DIRECTORY="$(echo "$DIRECTORIES" | sed 's:/$::' | fzf)"
 [ -z "$DIRECTORY" ] && exit 0
 SESSION_NAME="$(echo "$DIRECTORY" | awk -F/ '{print $(NF-1) "/" $NF}' | tr . _)"
 
-echo "$SESSION_NAME"
-
 # INSIDE TMUX
 if [ -n "$TMUX" ]; then
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
