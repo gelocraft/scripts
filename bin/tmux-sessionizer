@@ -1,26 +1,36 @@
 #!/bin/sh
 
-# shellcheck disable=SC2181
+export FZF_DEFAULT_OPTS="--border-label=' tmux-sessionizer '"
 
-FZF_DEFAULT_OPTS="--border-label=' tmux-sessionizer '"
+FIND_MAXDEPTH=3
+FIND_COMMAND="$(find "$HOME" -maxdepth $FIND_MAXDEPTH -type d)"
+FD_EXCLUDE_FILES="{.git,.cache,.npm,.cargo,.go,go,node_modules}"
 
-directories="$(find "$HOME" -maxdepth 3 -type d)"
-selected="$(echo "$directories" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" fzf)"
+[ -n "$(command -v fd)" ] && FIND_COMMAND="$(fd -C "$HOME" --absolute-path --exclude "$FD_EXCLUDE_FILES" --maxdepth $FIND_MAXDEPTH --hidden --type d)"
 
-[ -z "$selected" ] && exit 0
-session_name="$(basename "$selected" | tr . _)"
+DIRECTORIES="$FIND_COMMAND"
+DIRECTORY="$(echo "$DIRECTORIES" | sed 's:/$::' | fzf)"
+
+[ -z "$DIRECTORY" ] && exit 0
+SESSION_NAME="$(echo "$DIRECTORY" | awk -F/ '{print $(NF-1) "/" $NF}' | tr . _)"
+
+echo "$SESSION_NAME"
 
 # INSIDE TMUX
 if [ -n "$TMUX" ]; then
-    tmux has-session -t "$session_name" 2>/dev/null
-    [ $? -eq 0 ] && tmux switch-client -t "$session_name" && exit 0
-    [ $? -ne 0 ] && tmux new-session -ds "$session_name" -c "$selected"
-    tmux switch-client -t "$session_name" && exit 0
+    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        tmux switch-client -t "$SESSION_NAME" && exit 0
+    else
+        tmux new-session -ds "$SESSION_NAME" -c "$DIRECTORY"
+        tmux switch-client -t "$SESSION_NAME" && exit 0
+    fi
 fi
 
 # OUTSIDE TMUX
 if [ -z "$TMUX" ]; then
-    tmux has-session -t "$session_name" 2>/dev/null
-    [ $? -eq 0 ] && tmux attach-session -t "$session_name" && exit 0
-    [ $? -ne 0 ] && tmux new-session -s "$session_name" -c "$selected" && exit 0
+    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        tmux attach-session -t "$SESSION_NAME" && exit 0
+    else
+        tmux new-session -s "$SESSION_NAME" -c "$DIRECTORY" && exit 0
+    fi
 fi
