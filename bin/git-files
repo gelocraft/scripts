@@ -1,16 +1,32 @@
 #!/bin/sh
 
-BAT_THEME="${BAT_THEME:-Nord}"
+BAT_THEMES_DIR="$(bat --config-dir)/themes"
+mkdir -p "$BAT_THEMES_DIR"
+
+if [ ! -f "$BAT_THEMES_DIR/kanagawa.tmTheme" ]; then
+    KANAGAWA_THEME_RAW_URL="https://raw.githubusercontent.com/rebelot/kanagawa.nvim/refs/heads/master/extras/tmTheme/kanagawa.tmTheme"
+    curl -Ls --output-dir "$BAT_THEMES_DIR" \
+        --output "kanagawa.tmTheme" \
+        "$KANAGAWA_THEME_RAW_URL"
+fi
+
+if ! bat --list-themes | grep kanagawa >/dev/null; then
+    bat cache --build >/dev/null 2>&1
+fi
+
+BAT_THEME="${BAT_THEME:-kanagawa}"
 BAT_STYLE="${BAT_STYLE:-changes,numbers}"
 FZF_GIT_FILES_DEFAULT_OPTS="${FZF_GIT_FILES_DEFAULT_OPTS:---border=rounded --border-label=' git-files '}"
 FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-} ${FZF_GIT_FILES_DEFAULT_OPTS-} --bind='focus:transform-preview-label:basename {}'"
 
-git_dir="$(git rev-parse --show-toplevel 2>/dev/null)"
+GIT_DIR="$(git rev-parse --show-toplevel 2>/dev/null)"
 
-# shellcheck disable=SC2181
-[ $? -ne 0 ] && exit 1
+EXIT_CODE=$?
+[ $EXIT_CODE -ne 0 ] && exit 1
 
-git_files="$(git ls-files "$git_dir" --modified --others)"
+GIT_FILES="$(git ls-files "$GIT_DIR" --modified --others)"
 
-selected_file="$(echo "$git_files" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" BAT_STYLE="${BAT_STYLE-}" BAT_THEME="${BAT_THEME-}" fzf --preview="batcat --color=always {} 2>/dev/null || bat --color=always {} 2>/dev/null || cat {}")"
-[ -n "$selected_file" ] && "$EDITOR" "$selected_file"
+[ -z "$GIT_FILES" ] && exit 1
+
+SELECTED_FILE="$(echo "$GIT_FILES" | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS-}" BAT_STYLE="${BAT_STYLE-}" BAT_THEME="${BAT_THEME-}" fzf --preview="bat --style=numbers,changes,grid --color=always {}")"
+[ -n "$SELECTED_FILE" ] && "$EDITOR" "$SELECTED_FILE"
