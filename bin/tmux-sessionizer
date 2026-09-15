@@ -1,15 +1,15 @@
 #!/bin/sh
 
-export FZF_DEFAULT_OPTS="--border-label=' tmux-sessionizer '"
+FZF_DEFAULT_OPTS="--border-label=' tmux-sessionizer '"
 
 FIND_MAXDEPTH=3
-FIND_COMMAND="$(find "$HOME" -maxdepth $FIND_MAXDEPTH -type d)"
+FIND_COMMAND="find \"$HOME\" -maxdepth $FIND_MAXDEPTH -type d"
 FD_EXCLUDE_FILES="{.git,.cache,.npm,.cargo,.go,go,node_modules}"
 
-[ -n "$(command -v fd)" ] && FIND_COMMAND="$(fd -C "$HOME" --absolute-path --exclude "$FD_EXCLUDE_FILES" --maxdepth $FIND_MAXDEPTH --hidden --type d)"
+[ -n "$(command -v fd)" ] && FIND_COMMAND="fd -C \"$HOME\" --absolute-path --exclude \"$FD_EXCLUDE_FILES\" --maxdepth $FIND_MAXDEPTH --hidden --type d"
 
-DIRECTORIES="$FIND_COMMAND"
-DIRECTORY="$(echo "$DIRECTORIES" | sed 's:/$::' | fzf)"
+DIRECTORIES=$(sh -c "$FIND_COMMAND")
+DIRECTORY="$(echo "$DIRECTORIES" | sed 's:/$::' | FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS:-}" fzf)"
 
 [ -z "$DIRECTORY" ] && exit 0
 SESSION_NAME="$(echo "$DIRECTORY" | awk -F/ '{print $(NF-1) "/" $NF}' | tr . _)"
