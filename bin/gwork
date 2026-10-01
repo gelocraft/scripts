@@ -1,27 +1,30 @@
 #!/bin/sh
 
-USAGE="usage: gwork [-h | --help] [-l | --list] [-s | --switch] [-c | --create] [-rm | --remove]"
+USAGE="usage: gwork [-h | help] [-l | list] [-s | switch] [-c | create] [rm | remove]"
 
-G_HELP_USAGE="--help, -h \t\t show the usage (example: gwork --help)"
-G_LIST_USAGE="--list, -l \t\t list git worktrees (example: gwork --list)"
-G_BARE_CLONE_USAGE="--bare-clone, -bc \t bare clone remote git repository, with optional destination (example: gwork -bc <REMOTE> <DESTINATION>)"
-G_SWITCH_USAGE="--switch, -s \t\t switch to a worktree (example: gwork --switch <worktree>)"
-G_CREATE_USAGE="--create, -c \t\t create a worktree (example: gwork --create <worktree>)"
-G_REMOVE_USAGE="--remove, -rm \t remove a worktree (example: gwork --remove <worktree>)"
+G_HELP_USAGE="help, -h \t\t show the usage (example: gwork help)"
+G_LIST_USAGE="list, -l \t\t list git worktrees (example: gwork list)"
+G_BARE_CLONE_USAGE="bare-clone, -bc \t bare clone remote git repository, with optional destination (example: gwork -bc <REMOTE> <DESTINATION>)"
+G_SWITCH_USAGE="switch, -s \t\t switch to a worktree (example: gwork switch <worktree>)"
+G_CREATE_USAGE="create, -c \t\t create a worktree (example: gwork create <worktree>)"
+G_REMOVE_USAGE="remove, rm \t remove a worktree (example: gwork remove <worktree>)"
 G_AVAILABLE_COMMANDS="available gwork commands:"
 
 USAGE="$USAGE\n\n$G_AVAILABLE_COMMANDS\n\n  $G_HELP_USAGE\n  $G_LIST_USAGE\n  $G_BARE_CLONE_USAGE\n  $G_SWITCH_USAGE\n  $G_CREATE_USAGE\n  $G_REMOVE_USAGE\n\n"
 
-[ $# -eq 0 ] && echo "$USAGE" && exit 0
+[ "$(git rev-parse --is-bare-repository)" = "false" ] && echo "ERROR: not a bare repository" && exit 1
+
+[ $# -eq 0 ] && echo "$USAGE" && exit 1
 
 case "$1" in
---list | -l)
-    git worktree list
+list | -l)
+    git worktree list | awk '{print $NF}'
+    exit $?
     ;;
 
 # TODO: implement --switch
 # 1. i suppose i'm gonna use fzf here?
---switch | -s)
+switch | -s)
     SELECTED="$(git worktree list | fzf)"
     [ -z "$SELECTED" ] && exit 1
 
@@ -32,44 +35,67 @@ case "$1" in
     echo "$SELECTED"
     ;;
 
---bare-clone | -bc)
+bare-clone | -bc)
 
     if [ $# -ge 2 ]; then
         REMOTE_GIT_URL="$2"
         REPO_BASE="$(basename "$REMOTE_GIT_URL")"
-        ABSOLUTE_GIT_DIR="${3:-$REPO_BASE/.git}"
+        GIT_COMMON_DIR="${3:-$REPO_BASE/.git}"
 
-        git clone --bare "$REMOTE_GIT_URL" "$ABSOLUTE_GIT_DIR"
-    fi
-
-    ;;
-
---create | -c)
-
-    if [ $# -ge 2 ]; then
-        WORKTREE="$2"
-        ABSOLUTE_GIT_DIR="$(git rev-parse --absolute-git-dir 2>/dev/null)"
-        WORKTREES_DIR="${3:-$(dirname "$ABSOLUTE_GIT_DIR")/.worktrees}"
-        WORKTREE_DIR="$WORKTREES_DIR/$WORKTREE"
-
-        git worktree add "$WORKTREE_DIR" "$WORKTREE" 2>/dev/null
-
-        EXIT_CODE=$?
-        [ $EXIT_CODE -eq 0 ] && exit $EXIT_CODE
-
-        git worktree add -b "$WORKTREE" "$WORKTREE_DIR"
+        git clone --bare "$REMOTE_GIT_URL" "$GIT_COMMON_DIR"
         exit $?
     fi
 
     ;;
 
-    # TODO: implement this shitttttt
---remove | -rm)
-    SELECTED="$(git worktree list | fzf)"
-    echo "$SELECTED"
+create | -c)
+
+    if [ $# -ge 2 ]; then
+
+        WORKTREE="$2"
+        WORKTREES_DIR="${3:-}"
+        GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null)"
+
+        if [ "$GIT_COMMON_DIR" = ".git" ]; then
+            # relative path
+            WORKTREES_DIR="${3:-"$PWD/.worktrees"}"
+        else
+            # absolute path
+            WORKTREES_DIR="${3:-"$(dirname "$GIT_COMMON_DIR")/.worktrees"}"
+        fi
+
+        git worktree add "$WORKTREES_DIR/$WORKTREE" "$WORKTREE" 2>/dev/null
+        EXIT_CODE=$?
+
+        if [ $EXIT_CODE -eq 0 ]; then
+            echo "$WORKTREES_DIR/$WORKTREE"
+            exit $EXIT_CODE
+        else
+            git worktree add -b "$WORKTREE" "$WORKTREES_DIR/$WORKTREE"
+            EXIT_CODE=$?
+
+            echo "$WORKTREES_DIR/$WORKTREE"
+            exit $EXIT_CODE
+        fi
+
+    fi
+
     ;;
 
---help | -h | *) echo "$USAGE" ;;
+remove | rm)
+    if [ $# -eq 2 ]; then
+        git worktree remove --force "$2"
+        exit $?
+    fi
+
+    echo "$USAGE"
+    exit 1
+    ;;
+
+help | -h | *)
+    echo "$USAGE"
+    exit 1
+    ;;
 esac
 
-exit 0
+exit 1
