@@ -12,8 +12,6 @@ G_AVAILABLE_COMMANDS="available gwork commands:"
 
 USAGE="$USAGE\n\n$G_AVAILABLE_COMMANDS\n\n  $G_HELP_USAGE\n  $G_LIST_USAGE\n  $G_BARE_CLONE_USAGE\n  $G_SWITCH_USAGE\n  $G_CREATE_USAGE\n  $G_REMOVE_USAGE\n\n"
 
-[ "$(git rev-parse --is-bare-repository)" = "false" ] && echo "ERROR: not a bare repository" && exit 1
-
 [ $# -eq 0 ] && echo "$USAGE" && exit 1
 
 case "$1" in
@@ -53,25 +51,18 @@ create | -c)
     if [ $# -ge 2 ]; then
 
         WORKTREE="$2"
-        WORKTREES_DIR="${3:-}"
         GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null)"
+        WORKTREES_DIR="${3:-"$GIT_COMMON_DIR/.worktrees"}"
+        BARE_ROOT="$(dirname "$GIT_COMMON_DIR")"
 
-        if [ "$GIT_COMMON_DIR" = ".git" ]; then
-            # relative path
-            WORKTREES_DIR="${3:-"$PWD/.worktrees"}"
-        else
-            # absolute path
-            WORKTREES_DIR="${3:-"$(dirname "$GIT_COMMON_DIR")/.worktrees"}"
-        fi
-
-        git worktree add "$WORKTREES_DIR/$WORKTREE" "$WORKTREE" 2>/dev/null
+        git -C "$BARE_ROOT" worktree add "$WORKTREES_DIR/$WORKTREE" "$WORKTREE" 2>/dev/null
         EXIT_CODE=$?
 
         if [ $EXIT_CODE -eq 0 ]; then
             echo "$WORKTREES_DIR/$WORKTREE"
             exit $EXIT_CODE
         else
-            git worktree add -b "$WORKTREE" "$WORKTREES_DIR/$WORKTREE"
+            git -C "$BARE_ROOT" worktree add -b "$WORKTREE" "$WORKTREES_DIR/$WORKTREE"
             EXIT_CODE=$?
 
             echo "$WORKTREES_DIR/$WORKTREE"
